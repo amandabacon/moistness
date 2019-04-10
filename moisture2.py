@@ -126,10 +126,20 @@ def write_raw_backpack(bus, moistness):
 #	bus.write_i2c_block_data(DEVICE_ADDRESS_2, display_on, [])
 
 #this is where we convert the moistness to a string (and multiply by 1000 in order to move the decimal point)
-	moistness = str(moistness*1000)
+	moist = str(moistness*1000000)
 #chooses a moistness range for the different outputs (of course it cannot read the extreme values)
-	bus.write_i2c_block_data(DEVICE_ADDRESS_2, address_setting, [])
-	bus.write_i2c_block_data(DEVICE_ADDRESS_2, display_ram, [choose_mode(moistness[0]),0,choose_mode(moistness[1]),0,0,0,choose_mode_period(moistness[2]),0,choose_mode(moistness[3]),0])
+	if moistness >= 100.0:
+		bus.write_i2c_block_data(DEVICE_ADDRESS_2, address_setting, [])
+		bus.write_i2c_block_data(DEVICE_ADDRESS_2, display_ram, [6,0,63,0,0,0,191,0,63,0])
+	elif moistness < 100.0 and moistness >= 10.0:
+		bus.write_i2c_block_data(DEVICE_ADDRESS_2, address_setting, [])
+		bus.write_i2c_block_data(DEVICE_ADDRESS_2, display_ram, [0,0,choose_mode(moist[0]),0,0,0,choose_mode_period(moist[1]),0,choose_mode(moist[2]),0])
+	elif moistness > 0.0 and moistness < 10.0:
+		bus.write_i2c_block_data(DEVICE_ADDRESS_2, address_setting, [])
+		bus.write_i2c_block_data(DEVICE_ADDRESS_2, display_ram, [0,0,0,0,0,0,choose_mode_period(moist[0]),0,choose_mode(moist[1]),0])
+	else:
+		bus.write_i2c_block_data(DEVICE_ADDRESS_2, address_setting, [])
+		bus.write_i2c_block_data(DEVICE_ADDRESS_2, display_ram, [0,0,0,0,0,0,191,0,63,0])
 
 #notes below here for debugging purposes
 #
@@ -150,20 +160,32 @@ def configure_adc(bus):
 
 #defines a function that will get the raw data info.
 def get_raw_adc_reading(bus):
-	raw_reading = bus.read_i2c_block_data(DEVICE_ADDRESS,CONVERSION_REGISTER)
-	MSB = raw_reading[0] << 8
-	raw = MSB + raw_reading[1]
-#	rawstr = str(bin(raw))
-#	print(raw)
-#	print("rawstr ", rawstr)
-#	if raw >= (2**15):
-#		raw = 0
-	return raw
+#the loop below takes the reading of the ADC (raw_reading in this case) and obtains the most sig byte and uses this to obtain raw. 
+#We create a variable (raw_avg) in order to make the readings on the seven seg less jumpy. If there are any cases in which the ADC blips, 
+#we correct it in the if statement and set it to the average, else the average plus raw
+	raw_avg = 0
+	for i in range(10):
+		raw_reading = bus.read_i2c_block_data(DEVICE_ADDRESS,CONVERSION_REGISTER)
+		MSB = raw_reading[0] << 8
+		raw = MSB + raw_reading[1]
 
+		if raw >= (120*230):
+			raw_avg = raw_avg
+
+		else:
+			raw_avg = raw_avg + raw
+	raw_avg = (raw_avg/10)
+	return raw_avg
+
+#defines a function that reads out the moisture of the soil in percentage form based off of an upper level
 def convert_raw_to_moisture(raw):
-	ratio = 8.8
+	ratio = 230.0
 	moistness = ((raw)/(ratio))
-	return moistness
+	moistness = (moistness-2.2) #make up for base error in reading
+	if(moistness <=0.0):
+		return 0.0
+	else:
+		return moistness
 
 #defines a function that initialises the GPIO pins for the 5 LEDs
 def initialize_GPIO(): #sets all GPIO pins in use for LEDs
@@ -242,7 +264,12 @@ initialize_GPIO()
 while True:
 	raw_adc = get_raw_adc_reading(bus)
 	moistness = convert_raw_to_moisture(raw_adc)
-	print(moistness)
+	print("moistness percentage: ", moistness)
+	if moistness <= 30:
+		print("Water me now")
+	if moistness >= 80:
+		print("Plenty watered")
+	print("raw reading: ", raw_adc)
 	write_raw_backpack(bus,moistness)
 	shine_moistness(moistness)
 	sleep(5)
