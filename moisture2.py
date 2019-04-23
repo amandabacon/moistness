@@ -1,4 +1,3 @@
-
 #!/usr/bin/python3
 
 # Moisture sensor reading of soil
@@ -124,6 +123,7 @@ def write_raw_backpack(bus, moistness):
 #		sleep(1)
 #		i=i+1
 #	bus.write_i2c_block_data(DEVICE_ADDRESS_2, display_on, [])
+#end of commented note section
 
 #this is where we convert the moistness to a string (and multiply by 1000 in order to move the decimal point)
 	moist = str(moistness*1000000)
@@ -248,13 +248,13 @@ def shine_moistness(moistness):
 		GPIO.output(18, GPIO.HIGH)
 
 
-#main
+#main section
 configure_adc(bus)
 
 configure_backpack(bus)
 
 raw_adc = get_raw_adc_reading(bus)
-print(raw_adc)
+print("This iss the raw reading: ", raw_adc)
 moistness = convert_raw_to_moisture(raw_adc)
 print("This is the moisture reading: ", moistness)
 
