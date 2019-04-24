@@ -11,12 +11,12 @@ from time import *
 GPIO.setmode(GPIO.BOARD)
 bus = smbus.SMBus(1)
 
-#ADC device information
+#set up ADC device information
 DEVICE_ADDRESS = 0x48
 CONFIG_REGISTER = 0x1
 CONVERSION_REGISTER = 0x0
 
-#LED i2c backpack information
+#set up LED i2c backpack information
 DEVICE_ADDRESS_2 = 0x70
 CONFIG_REGISTER_2 = 0b00100001
 CONVERSION_REGISTER_2 = 0x0
@@ -30,13 +30,13 @@ address_setting = 0b01000000
 display_ram =  0b000000000
 display_on = 0b10000001
 
+#define a function that configures the LED 7-segment display
 def configure_backpack(bus):
-	con = [0x0,0x0]
+	con = [0x0,0x0] #could have used an empty list here
 	bus.write_i2c_block_data(DEVICE_ADDRESS_2, clock_enable,con)
 	bus.write_i2c_block_data(DEVICE_ADDRESS_2, row_int,con)
 	bus.write_i2c_block_data(DEVICE_ADDRESS_2, dimming,con)
 	bus.write_i2c_block_data(DEVICE_ADDRESS_2, blinking,con)
-
 
 #define a function that will take a string value of the moistness and convert it to the number corresponding to the 7-segment display output
 def choose_mode(num):
@@ -125,8 +125,9 @@ def write_raw_backpack(bus, moistness):
 #	bus.write_i2c_block_data(DEVICE_ADDRESS_2, display_on, [])
 #end of commented note section
 
-#this is where we convert the moistness to a string (and multiply by 1000 in order to move the decimal point)
+#this is where we convert the moistness to a string (and multiply by 1000000 in order to move the decimal point)
 	moist = str(moistness*1000000)
+
 #chooses a moistness range for the different outputs (of course it cannot read the extreme values)
 	if moistness >= 100.0:
 		bus.write_i2c_block_data(DEVICE_ADDRESS_2, address_setting, [])
@@ -247,14 +248,13 @@ def shine_moistness(moistness):
 		GPIO.output(16, GPIO.HIGH)
 		GPIO.output(18, GPIO.HIGH)
 
-
 #main section
 configure_adc(bus)
 
 configure_backpack(bus)
 
 raw_adc = get_raw_adc_reading(bus)
-print("This iss the raw reading: ", raw_adc)
+print("This is the raw reading: ", raw_adc)
 moistness = convert_raw_to_moisture(raw_adc)
 print("This is the moisture reading: ", moistness)
 
